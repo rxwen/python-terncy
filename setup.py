@@ -32,6 +32,7 @@ with open("terncy/version.py") as f:
         url="https://github.com/rxwen/python-terncy/",
         description="A Python library for controlling Terncy devices.",
         long_description="A Python library for controlling Terncy devices.",
+        long_description_content_type="text/markdown",
         license="MIT",
         classifiers=classifiers,
         packages=["terncy"],
