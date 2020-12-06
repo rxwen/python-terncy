@@ -5,7 +5,7 @@ import sys
 
 from setuptools import setup
 
-assert sys.version >= "2.7", "Requires Python v2.7 or above."
+assert sys.version >= "3.6", "Requires Python v3.6 or above."
 
 with open("terncy/version.py") as f:
     exec(f.read())
@@ -13,11 +13,6 @@ with open("terncy/version.py") as f:
     classifiers = [
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.2",
-        "Programming Language :: Python :: 3.3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
