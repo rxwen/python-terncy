@@ -30,7 +30,8 @@ async def main():
     )
     token_id, token = await t.request_token("homeassistant_user", "HA User")
 
-    # approve the token request in Terncy app
+    # approve the token request in Terncy app, the client should store the
+    # allocated token and token id for later usage
     
     # create a new Terncy object with approved token
     t_with_token = terncy.Terncy(
