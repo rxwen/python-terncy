@@ -1,1 +1,2 @@
-websocket_client==0.57.0
+aiohttp==3.7.3
+zeroconf==0.28.7
