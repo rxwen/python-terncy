@@ -6,6 +6,7 @@ import json
 import ssl
 import uuid
 import version
+import ipaddress
 from datetime import datetime
 from enum import Enum
 from zeroconf import ServiceBrowser, Zeroconf
@@ -37,6 +38,14 @@ class TerncyZCListener(object):
         info = zeroconf.get_service_info(svc_type, name)
         uuid = name.replace("." + svc_type, "")
         txt_records = {"uuid": uuid}
+        ip = ""
+        if len(info.addresses) > 0:
+            if len(info.addresses[0]) == 4:
+                ip = str(ipaddress.IPv4Address(info.addresses[0]))
+            if len(info.addresses[0]) == 16:
+                ip = str(ipaddress.IPv6Address(info.addresses[0]))
+        txt_records["ip"] = ip
+        txt_records["port"] = info.port
         for k in info.properties:
             txt_records[k.decode("utf-8")] = info.properties[k].decode("utf-8")
 
@@ -141,7 +150,7 @@ class Terncy:
         listener = TerncyZCListener(self)
         browser = ServiceBrowser(zc, "_websocket._tcp.local.", listener)
         browser.run()
-        await asyncio.sleep(15)
+        await asyncio.sleep(3)
         browser.cancel()
         zc.close()
         return self.discovered_homecenters
