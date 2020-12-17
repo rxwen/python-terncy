@@ -4,9 +4,9 @@ A python library for control [Terncy](https://www.terncy.com/) devices.
 [![PyPI version](https://badge.fury.io/py/terncy.svg)](https://badge.fury.io/py/terncy) [![Build Status](https://travis-ci.org/rxwen/python-terncy.svg?branch=master)](https://travis-ci.org/rxwen/python-terncy)
 
 
-Before use this library, developer need to get a client id from terncy. The client id is a string that uniquely identifies the the client app connectes to Terncy system. For istance, Home Assistant integration has its own client id. By presenting a valid client id to Terncy, which use allow access to the system.
+Before use this library, developer need to get a client id from terncy. The client id is a string that uniquely identifies the client app connectes to Terncy system. For istance, Home Assistant integration has its own client id. By presenting a valid client id to Terncy, it allows access to the system.
 
-An access credential is also needed to make sure the owner of the Terncy system is aware of, and permit the client access. The approval of the access credential is done in Terncy app.
+In addition, an access credential is also needed to make sure the owner of the Terncy system is aware of, and permit the client access. The approval of the access credential is done in Terncy app.
 
 
 Example:
