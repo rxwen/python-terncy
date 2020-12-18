@@ -5,7 +5,7 @@ import logging
 import json
 import ssl
 import uuid
-import version
+from terncy import version
 import ipaddress
 from datetime import datetime
 from enum import Enum
