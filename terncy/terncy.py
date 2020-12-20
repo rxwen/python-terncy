@@ -194,9 +194,9 @@ class Terncy:
                             if self._event_handler:
                                 self._event_handler(self, event.Disconnected())
                             return
-                        print("got message:", datetime.now())
+                        # print("got message:", datetime.now())
                         msgObj = msg.json()
-                        print(msgObj)
+                        # print(msgObj)
                         if "rspId" in msgObj:
                             rsp_id = msgObj["rspId"]
 
@@ -225,12 +225,14 @@ class Terncy:
         self._pending_requests[req_id] = request
         aw = asyncio.ensure_future(evt.wait())
         done, pending = await asyncio.wait({aw}, timeout=timeout)
+        rsp = None
         if aw in done:
-            print("wait response ok", datetime.now())
+            rsp = request["_response"]
         else:
             print("wait response timeout", datetime.now())
         if req_id in self._pending_requests:
             self._pending_requests.pop(req_id)
+        return rsp
 
     async def get_entities(self, ent_type, wait_result=False, timeout=5):
         req_id = _next_req_id()
@@ -241,7 +243,7 @@ class Terncy:
         }
         await self._connection.send_str(json.dumps(data))
         if wait_result:
-            await self._wait_for_response(req_id, data, timeout)
+            return await self._wait_for_response(req_id, data, timeout)
 
     async def set_onoff(self, ent_uuid, state, wait_result=False, timeout=5):
         return self.set_attribute(ent_uuid, "on", state, 0, wait_result)
@@ -268,4 +270,4 @@ class Terncy:
         }
         await self._connection.send_str(json.dumps(data))
         if wait_result:
-            await self._wait_for_response(req_id, data, timeout)
+            return await self._wait_for_response(req_id, data, timeout)
