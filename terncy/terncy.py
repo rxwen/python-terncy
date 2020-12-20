@@ -202,7 +202,7 @@ class Terncy:
 
                             if rsp_id in self._pending_requests:
                                 req = self._pending_requests[rsp_id]
-                                req["_response"] = msgObj
+                                req["rsp"] = msgObj
                                 req["event"].set()
                         if "intent" in msgObj and msgObj["intent"] == "event":
                             if self._event_handler:
@@ -215,24 +215,24 @@ class Terncy:
             return
 
     async def _wait_for_response(self, req_id, req, timeout):
+        ''' return the request and its response '''
         evt = asyncio.Event()
-        request = {
+        response_desc = {
             "req": req,
             "time": datetime.now(),
             "event": evt,
         }
 
-        self._pending_requests[req_id] = request
+        self._pending_requests[req_id] = response_desc
         aw = asyncio.ensure_future(evt.wait())
         done, pending = await asyncio.wait({aw}, timeout=timeout)
-        rsp = None
         if aw in done:
-            rsp = request["_response"]
+            pass
         else:
             print("wait response timeout", datetime.now())
         if req_id in self._pending_requests:
             self._pending_requests.pop(req_id)
-        return rsp
+        return response_desc
 
     async def get_entities(self, ent_type, wait_result=False, timeout=5):
         req_id = _next_req_id()
