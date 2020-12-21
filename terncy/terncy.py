@@ -12,6 +12,7 @@ from datetime import datetime
 from enum import Enum
 from zeroconf import ServiceBrowser, Zeroconf
 import aiohttp
+import websockets
 
 logger = logging.getLogger("terncy.log")
 
@@ -181,33 +182,31 @@ class Terncy:
             self.token,
         )
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.ws_connect(
-                    url, ssl=ssl._create_unverified_context()
-                ) as ws:
-                    self._connection = ws
-                    if self._event_handler:
-                        self._event_handler(self, event.Connected())
-                    async for msg in ws:
-                        if msg.type == aiohttp.WSMsgType.CLOSE:
-                            print("got close message:", datetime.now())
-                            if self._event_handler:
-                                self._event_handler(self, event.Disconnected())
-                            return
-                        # print("got message:", datetime.now())
-                        msgObj = msg.json()
-                        # print(msgObj)
-                        if "rspId" in msgObj:
-                            rsp_id = msgObj["rspId"]
+            ssl_no_verify = ssl._create_unverified_context()
+            async with websockets.connect(url, ssl=ssl_no_verify) as ws:
+                self._connection = ws
+                if self._event_handler:
+                    self._event_handler(self, event.Connected())
+                async for msg in ws:
+                    msgObj = json.loads(msg)
+                    print(msgObj)
+                    if "rspId" in msgObj:
+                        rsp_id = msgObj["rspId"]
 
-                            if rsp_id in self._pending_requests:
-                                req = self._pending_requests[rsp_id]
-                                req["rsp"] = msgObj
-                                req["event"].set()
-                        if "intent" in msgObj and msgObj["intent"] == "event":
-                            if self._event_handler:
-                                self._event_handler(self, event.Message(msg))
-        except aiohttp.client_exceptions.ClientConnectionError as e:
+                        if rsp_id in self._pending_requests:
+                            req = self._pending_requests[rsp_id]
+                            req["rsp"] = msgObj
+                            req["event"].set()
+                    if "intent" in msgObj and msgObj["intent"] == "event":
+                        if self._event_handler:
+                            ev = event.EventMessage(msg)
+                            self._event_handler(self, ev)
+        except (
+            aiohttp.client_exceptions.ClientConnectionError,
+            websockets.exceptions.ConnectionClosedError,
+            ConnectionRefusedError,
+            websockets.exceptions.InvalidStatusCode,
+        ) as e:
             print("failed to connect server:", datetime.now())
             print(e)
             if self._event_handler:
@@ -215,7 +214,7 @@ class Terncy:
             return
 
     async def _wait_for_response(self, req_id, req, timeout):
-        ''' return the request and its response '''
+        """ return the request and its response """
         evt = asyncio.Event()
         response_desc = {
             "req": req,
@@ -241,7 +240,7 @@ class Terncy:
             "intent": "sync",
             "type": ent_type,
         }
-        await self._connection.send_str(json.dumps(data))
+        await self._connection.send(json.dumps(data))
         if wait_result:
             return await self._wait_for_response(req_id, data, timeout)
 
@@ -268,6 +267,6 @@ class Terncy:
                 }
             ],
         }
-        await self._connection.send_str(json.dumps(data))
+        await self._connection.send(json.dumps(data))
         if wait_result:
             return await self._wait_for_response(req_id, data, timeout)

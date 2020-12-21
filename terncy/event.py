@@ -18,6 +18,6 @@ class Gone:
     def __init__():
         pass
 
-class Message:
+class EventMessage:
     def __init__(self, msg):
         self.msg = msg
