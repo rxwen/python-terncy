@@ -183,10 +183,13 @@ class Terncy:
         )
         try:
             ssl_no_verify = ssl._create_unverified_context()
-            async with websockets.connect(url, ssl=ssl_no_verify) as ws:
+            async with websockets.connect(
+                url, ping_timeout=None, ping_interval=None, ssl=ssl_no_verify
+            ) as ws:
                 self._connection = ws
                 if self._event_handler:
                     self._event_handler(self, event.Connected())
+                    print("connected to server:", datetime.now())
                 async for msg in ws:
                     msgObj = json.loads(msg)
                     print(msgObj)
@@ -201,6 +204,8 @@ class Terncy:
                         if self._event_handler:
                             ev = event.EventMessage(msg)
                             self._event_handler(self, ev)
+                    if "intent" in msgObj and msgObj["intent"] == "ping":
+                        await ws.send('{"intent":"pong"}')
         except (
             aiohttp.client_exceptions.ClientConnectionError,
             websockets.exceptions.ConnectionClosedError,
