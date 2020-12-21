@@ -168,6 +168,10 @@ class Terncy:
         asyncio.ensure_future(self._send_routine())
         return await self._start_websocket()
 
+    async def stop(self):
+        if self._connection:
+            await self._connection.close()
+
     async def _send_routine(self):
         while True:
             await asyncio.sleep(5)
