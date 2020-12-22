@@ -251,6 +251,7 @@ class Terncy:
             aiohttp.client_exceptions.ClientConnectionError,
             websockets.exceptions.ConnectionClosedError,
             ConnectionRefusedError,
+            OSError,
             websockets.exceptions.InvalidStatusCode,
         ) as e:
             print("failed to connect server:", datetime.now())
