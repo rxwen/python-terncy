@@ -254,7 +254,7 @@ class Terncy:
             return await self._wait_for_response(req_id, data, timeout)
 
     async def set_onoff(self, ent_uuid, state, wait_result=False, timeout=5):
-        return self.set_attribute(ent_uuid, "on", state, 0, wait_result)
+        return await self.set_attribute(ent_uuid, "on", state, 0, wait_result)
 
     async def set_attribute(
         self, ent_uuid, attr, attr_val, method, wait_result=False, timeout=5
