@@ -206,7 +206,7 @@ class Terncy:
                             req["event"].set()
                     if "intent" in msgObj and msgObj["intent"] == "event":
                         if self._event_handler:
-                            ev = event.EventMessage(msg)
+                            ev = event.EventMessage(msgObj)
                             self._event_handler(self, ev)
                     if "intent" in msgObj and msgObj["intent"] == "ping":
                         await ws.send('{"intent":"pong"}')
