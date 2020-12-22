@@ -36,6 +36,24 @@ class TerncyZCListener(object):
         if uuid in self.terncy.discovered_homecenters:
             self.terncy.discovered_homecenters.pop(uuid)
 
+    def update_service(self, zeroconf, svc_type, name):
+        info = zeroconf.get_service_info(svc_type, name)
+        uuid = name.replace("." + svc_type, "")
+        txt_records = {"uuid": uuid}
+        ip = ""
+        if len(info.addresses) > 0:
+            if len(info.addresses[0]) == 4:
+                ip = str(ipaddress.IPv4Address(info.addresses[0]))
+            if len(info.addresses[0]) == 16:
+                ip = str(ipaddress.IPv6Address(info.addresses[0]))
+        txt_records["ip"] = ip
+        txt_records["port"] = info.port
+        for k in info.properties:
+            txt_records[k.decode("utf-8")] = info.properties[k].decode("utf-8")
+
+        self.terncy.discovered_homecenters[uuid] = txt_records
+        print("\nservice state\n", self.terncy.discovered_homecenters)
+
     def add_service(self, zeroconf, svc_type, name):
         info = zeroconf.get_service_info(svc_type, name)
         uuid = name.replace("." + svc_type, "")
@@ -65,6 +83,9 @@ class Terncy:
         self.token_id = -1
         self.token_state = TokenState.INVALID
         self.discovered_homecenters = {}
+        self._discovery_engine = None
+        self._discovery_browser = None
+        self._discovery_listener = None
         self._connection = None
         self._pending_requests = {}
         self._event_handler = None
@@ -146,6 +167,22 @@ class Terncy:
                 if "state" in body:
                     state = body["state"]
                 return response.status, state
+
+    async def start_discovery(self, listener):
+        if self._discovery_engine is None:
+            zc = Zeroconf()
+            browser = ServiceBrowser(zc, "_websocket._tcp.local.", listener)
+            self._discovery_engine = zc
+            self._discovery_browser = browser
+            self._discovery_listener = listener
+
+    async def stop_discovery(self, listener):
+        if self._discovery_engine is not None:
+            self._discovery_engine.close()
+            self._discovery_browser.cancel()
+            self._discovery_engine = None
+            self._discovery_browser = None
+            self._discovery_listener = None
 
     async def discover(self):
         zc = Zeroconf()
