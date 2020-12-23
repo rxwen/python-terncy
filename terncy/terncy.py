@@ -203,17 +203,12 @@ class Terncy:
             self.ip,
             self.port,
         )
-        asyncio.ensure_future(self._send_routine())
         return await self._start_websocket()
 
     async def stop(self):
         if self._connection:
             await self._connection.close()
-
-    async def _send_routine(self):
-        while True:
-            await asyncio.sleep(5)
-            # await self.get_entities("device", True)
+            self._connection = None
 
     async def _start_websocket(self):
         url = "wss://%s:%d/ws/json?clientId=%s&username=%s&token=%s" % (
@@ -282,6 +277,9 @@ class Terncy:
         return response_desc
 
     async def get_entities(self, ent_type, wait_result=False, timeout=5):
+        if self._connection is None:
+            print("can't send without connection")
+            return None
         req_id = _next_req_id()
         data = {
             "reqId": req_id,
@@ -293,11 +291,17 @@ class Terncy:
             return await self._wait_for_response(req_id, data, timeout)
 
     async def set_onoff(self, ent_uuid, state, wait_result=False, timeout=5):
+        if self._connection is None:
+            print("can't send without connection")
+            return None
         return await self.set_attribute(ent_uuid, "on", state, 0, wait_result)
 
     async def set_attribute(
         self, ent_uuid, attr, attr_val, method, wait_result=False, timeout=5
     ):
+        if self._connection is None:
+            print("can't send without connection")
+            return None
         req_id = _next_req_id()
         data = {
             "reqId": req_id,
