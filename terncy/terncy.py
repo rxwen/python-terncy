@@ -250,10 +250,11 @@ class Terncy:
             OSError,
             websockets.exceptions.InvalidStatusCode,
         ) as e:
-            print("failed to connect server:", datetime.now())
+            print("disconnect with server:", datetime.now())
             print(e)
             if self._event_handler:
                 self._event_handler(self, event.Disconnected())
+            self._connection = None
             return
 
     async def _wait_for_response(self, req_id, req, timeout):
