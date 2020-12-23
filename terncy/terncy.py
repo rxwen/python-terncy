@@ -74,8 +74,9 @@ class TerncyZCListener(object):
 
 
 class Terncy:
-    def __init__(self, client_id, ip, port=443, username="", token=""):
+    def __init__(self, client_id, dev_id, ip, port=443, username="", token=""):
         self.client_id = client_id
+        self.dev_id = dev_id
         self.ip = ip
         self.port = port
         self.username = username
