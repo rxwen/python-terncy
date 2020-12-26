@@ -119,6 +119,9 @@ class Terncy:
         self._pending_requests = {}
         self._event_handler = None
 
+    def is_connected(self, handler):
+        return self._connection is not None
+
     def register_event_handler(self, handler):
         self._event_handler = handler
 
