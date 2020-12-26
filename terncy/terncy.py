@@ -123,7 +123,7 @@ class Terncy:
         self._event_handler = handler
 
     async def request_token(self, username, name):
-        url = "https://%s:%d/v1/tokens:request" % (self.ip, self.port)
+        url = f"https://{self.ip}:{self.port}/v1/tokens:request"
         async with aiohttp.ClientSession() as session:
             data = {
                 "reqId": _next_req_id(),
@@ -139,7 +139,7 @@ class Terncy:
                 ssl=ssl._create_unverified_context(),
             ) as response:
                 body = await response.json()
-                _LOGGER.debug("resp body: %s", body)
+                _LOGGER.debug(f"resp body: {body}")
                 state = TokenState.INVALID
                 token = ""
                 token_id = -1
@@ -152,7 +152,7 @@ class Terncy:
                 return response.status, token_id, token, state
 
     async def delete_token(self, token_id, token):
-        url = "https://%s:%d/v1/tokens:request" % (self.ip, self.port)
+        url = f"https://{self.ip}:{self.port}/v1/tokens:delete"
         async with aiohttp.ClientSession() as session:
             data = {
                 "reqId": _next_req_id(),
@@ -166,11 +166,11 @@ class Terncy:
                 data=json.dumps(data),
                 ssl=ssl._create_unverified_context(),
             ) as response:
-                _LOGGER.debug("resp: %s", response)
+                _LOGGER.debug(f"resp: {response}")
                 return response.status
 
     async def check_token_state(self, token_id, token=""):
-        url = "https://%s:%d/v1/tokens:query" % (self.ip, self.port)
+        url = f"https://{self.ip}:{self.port}/v1/tokens:query"
         async with aiohttp.ClientSession() as session:
             data = {
                 "reqId": _next_req_id(),
@@ -185,7 +185,7 @@ class Terncy:
                 ssl=ssl._create_unverified_context(),
             ) as response:
                 body = await response.json()
-                _LOGGER.debug("resp: %s", response)
+                _LOGGER.debug(f"resp: {response}")
                 state = TokenState.INVALID
                 if "state" in body:
                     state = body["state"]
@@ -193,13 +193,8 @@ class Terncy:
 
     async def start(self):
         """Connect to Terncy system and start event monitor."""
-        _LOGGER.info(
-            "Terncy v%s starting connection to %s %s:%d.",
-            __version__,
-            self.dev_id,
-            self.ip,
-            self.port,
-        )
+        _LOGGER.info(f"Terncy v{__version__} starting connection to:")
+        _LOGGER.info(f"{self.dev_id} {self.ip}:{self.port}")
         return await self._start_websocket()
 
     async def stop(self):
@@ -208,13 +203,7 @@ class Terncy:
             self._connection = None
 
     async def _start_websocket(self):
-        url = "wss://%s:%d/ws/json?clientId=%s&username=%s&token=%s" % (
-            self.ip,
-            self.port,
-            self.client_id,
-            self.username,
-            self.token,
-        )
+        url = f"wss://{self.ip}:{self.port}/ws/json?clientId={self.client_id}&username={self.username}&token={self.token}"
         try:
             ssl_no_verify = ssl._create_unverified_context()
             async with websockets.connect(
@@ -222,11 +211,11 @@ class Terncy:
             ) as ws:
                 self._connection = ws
                 if self._event_handler:
-                    _LOGGER.info("connected to %s", self.dev_id)
+                    _LOGGER.info(f"connected to {self.dev_id}")
                     self._event_handler(self, event.Connected())
                 async for msg in ws:
                     msgObj = json.loads(msg)
-                    _LOGGER.debug("recv %s msg: %s", self.dev_id, msgObj)
+                    _LOGGER.debug(f"recv {self.dev_id} msg: {msgObj}")
                     if "rspId" in msgObj:
                         rsp_id = msgObj["rspId"]
 
@@ -247,7 +236,7 @@ class Terncy:
             OSError,
             websockets.exceptions.InvalidStatusCode,
         ) as e:
-            _LOGGER.info("disconnect with %s %s", self.dev_id, e)
+            _LOGGER.info(f"disconnect with {self.dev_id} {e}")
             if self._event_handler:
                 self._event_handler(self, event.Disconnected())
             self._connection = None
@@ -268,7 +257,7 @@ class Terncy:
         if aw in done:
             pass
         else:
-            _LOGGER.info("wait %s response timeout", self.dev_id)
+            _LOGGER.info(f"wait {self.dev_id} response timeout")
         if req_id in self._pending_requests:
             self._pending_requests.pop(req_id)
         return response_desc
@@ -277,7 +266,7 @@ class Terncy:
         self, ent_type, wait_result=False, timeout=WAIT_RESP_TIMEOUT_SEC
     ):
         if self._connection is None:
-            _LOGGER.info("no connection with %s", self.dev_id)
+            _LOGGER.info(f"no connection with {self.dev_id}")
             return None
         req_id = _next_req_id()
         data = {
@@ -293,7 +282,7 @@ class Terncy:
         self, ent_id, state, wait_result=False, timeout=WAIT_RESP_TIMEOUT_SEC
     ):
         if self._connection is None:
-            _LOGGER.info("no connection with %s", self.dev_id)
+            _LOGGER.info(f"no connection with {self.dev_id}")
             return None
         return await self.set_attribute(ent_id, "on", state, 0, wait_result)
 
@@ -307,7 +296,7 @@ class Terncy:
         timeout=WAIT_RESP_TIMEOUT_SEC,
     ):
         if self._connection is None:
-            _LOGGER.info("no connection with %s", self.dev_id)
+            _LOGGER.info(f"no connection with {self.dev_id}")
             return None
         req_id = _next_req_id()
         data = {
