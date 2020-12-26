@@ -14,7 +14,7 @@ from zeroconf import ServiceBrowser, Zeroconf
 import aiohttp
 import websockets
 
-logger = logging.getLogger("terncy.log")
+_LOGGER = logging.getLogger(__name__)
 
 
 def _next_req_id():
@@ -27,19 +27,31 @@ class TokenState(Enum):
     APPROVED = 3
 
 
-class TerncyZCListener(object):
-    def __init__(self, terncy):
-        self.terncy = terncy
+TERNCY_HUB_SVC_NAME = "_websocket._tcp.local."
+
+WAIT_RESP_TIMEOUT_SEC = 5
+
+_discovery_engine = None
+_discovery_browser = None
+
+discovered_homecenters = {}
+
+
+class _TerncyZCListener:
+    def __init__(self):
+        pass
 
     def remove_service(self, zeroconf, svc_type, name):
-        uuid = name.replace("." + svc_type, "")
-        if uuid in self.terncy.discovered_homecenters:
-            self.terncy.discovered_homecenters.pop(uuid)
+        global discovered_homecenters
+        dev_id = name.replace("." + svc_type, "")
+        if dev_id in discovered_homecenters:
+            discovered_homecenters.pop(dev_id)
 
     def update_service(self, zeroconf, svc_type, name):
+        global discovered_homecenters
         info = zeroconf.get_service_info(svc_type, name)
-        uuid = name.replace("." + svc_type, "")
-        txt_records = {"uuid": uuid}
+        dev_id = name.replace("." + svc_type, "")
+        txt_records = {"dev_id": dev_id}
         ip = ""
         if len(info.addresses) > 0:
             if len(info.addresses[0]) == 4:
@@ -51,13 +63,13 @@ class TerncyZCListener(object):
         for k in info.properties:
             txt_records[k.decode("utf-8")] = info.properties[k].decode("utf-8")
 
-        self.terncy.discovered_homecenters[uuid] = txt_records
-        print("\nservice state\n", self.terncy.discovered_homecenters)
+        discovered_homecenters[dev_id] = txt_records
 
     def add_service(self, zeroconf, svc_type, name):
+        global discovered_homecenters
         info = zeroconf.get_service_info(svc_type, name)
-        uuid = name.replace("." + svc_type, "")
-        txt_records = {"uuid": uuid}
+        dev_id = name.replace("." + svc_type, "")
+        txt_records = {"dev_id": dev_id}
         ip = ""
         if len(info.addresses) > 0:
             if len(info.addresses[0]) == 4:
@@ -69,8 +81,28 @@ class TerncyZCListener(object):
         for k in info.properties:
             txt_records[k.decode("utf-8")] = info.properties[k].decode("utf-8")
 
-        self.terncy.discovered_homecenters[uuid] = txt_records
-        print("\nservice state\n", self.terncy.discovered_homecenters)
+        discovered_homecenters[dev_id] = txt_records
+
+
+async def start_discovery():
+    global _discovery_engine
+    global _discovery_browser
+    if _discovery_engine is None:
+        zc = Zeroconf()
+        listener = _TerncyZCListener()
+        browser = ServiceBrowser(zc, TERNCY_HUB_SVC_NAME, listener)
+        _discovery_engine = zc
+        _discovery_browser = browser
+
+
+async def stop_discovery():
+    global _discovery_engine
+    global _discovery_browser
+    if _discovery_engine is not None:
+        _discovery_browser.cancel()
+        _discovery_engine.close()
+        _discovery_engine = None
+        _discovery_browser = None
 
 
 class Terncy:
@@ -83,10 +115,6 @@ class Terncy:
         self.token = token
         self.token_id = -1
         self.token_state = TokenState.INVALID
-        self.discovered_homecenters = {}
-        self._discovery_engine = None
-        self._discovery_browser = None
-        self._discovery_listener = None
         self._connection = None
         self._pending_requests = {}
         self._event_handler = None
@@ -110,10 +138,8 @@ class Terncy:
                 data=json.dumps(data),
                 ssl=ssl._create_unverified_context(),
             ) as response:
-                print("status:", response.status)
-                print("headers", response.headers)
                 body = await response.json()
-                print("body:", body)
+                _LOGGER.debug("resp body: %s", body)
                 state = TokenState.INVALID
                 token = ""
                 token_id = -1
@@ -140,8 +166,7 @@ class Terncy:
                 data=json.dumps(data),
                 ssl=ssl._create_unverified_context(),
             ) as response:
-                print("status:", response.status)
-                print("headers", response.headers)
+                _LOGGER.debug("resp: %s", response)
                 return response.status
 
     async def check_token_state(self, token_id, token=""):
@@ -154,52 +179,24 @@ class Terncy:
                 "token": token,
                 "id": token_id,
             }
-            print("req", json.dumps(data))
             async with session.post(
                 url,
                 data=json.dumps(data),
                 ssl=ssl._create_unverified_context(),
             ) as response:
-                print("status:", response.status)
-                print("headers", response.headers)
                 body = await response.json()
-                print("body:", body)
+                _LOGGER.debug("resp: %s", response)
                 state = TokenState.INVALID
                 if "state" in body:
                     state = body["state"]
                 return response.status, state
 
-    async def start_discovery(self, listener):
-        if self._discovery_engine is None:
-            zc = Zeroconf()
-            browser = ServiceBrowser(zc, "_websocket._tcp.local.", listener)
-            self._discovery_engine = zc
-            self._discovery_browser = browser
-            self._discovery_listener = listener
-
-    async def stop_discovery(self, listener):
-        if self._discovery_engine is not None:
-            self._discovery_engine.close()
-            self._discovery_browser.cancel()
-            self._discovery_engine = None
-            self._discovery_browser = None
-            self._discovery_listener = None
-
-    async def discover(self):
-        zc = Zeroconf()
-        listener = TerncyZCListener(self)
-        browser = ServiceBrowser(zc, "_websocket._tcp.local.", listener)
-        browser.run()
-        await asyncio.sleep(3)
-        browser.cancel()
-        zc.close()
-        return self.discovered_homecenters
-
     async def start(self):
         """Connect to Terncy system and start event monitor."""
-        print(
-            "Terncy v%s starting connection to %s:%d.",
+        _LOGGER.info(
+            "Terncy v%s starting connection to %s %s:%d.",
             __version__,
+            self.dev_id,
             self.ip,
             self.port,
         )
@@ -225,11 +222,11 @@ class Terncy:
             ) as ws:
                 self._connection = ws
                 if self._event_handler:
+                    _LOGGER.info("connected to %s", self.dev_id)
                     self._event_handler(self, event.Connected())
-                    print("connected to server:", datetime.now())
                 async for msg in ws:
                     msgObj = json.loads(msg)
-                    print(msgObj)
+                    _LOGGER.debug("recv %s msg: %s", self.dev_id, msgObj)
                     if "rspId" in msgObj:
                         rsp_id = msgObj["rspId"]
 
@@ -250,8 +247,7 @@ class Terncy:
             OSError,
             websockets.exceptions.InvalidStatusCode,
         ) as e:
-            print("disconnect with server:", datetime.now())
-            print(e)
+            _LOGGER.info("disconnect with %s %s", self.dev_id, e)
             if self._event_handler:
                 self._event_handler(self, event.Disconnected())
             self._connection = None
@@ -272,14 +268,16 @@ class Terncy:
         if aw in done:
             pass
         else:
-            print("wait response timeout", datetime.now())
+            _LOGGER.info("wait %s response timeout", self.dev_id)
         if req_id in self._pending_requests:
             self._pending_requests.pop(req_id)
         return response_desc
 
-    async def get_entities(self, ent_type, wait_result=False, timeout=5):
+    async def get_entities(
+        self, ent_type, wait_result=False, timeout=WAIT_RESP_TIMEOUT_SEC
+    ):
         if self._connection is None:
-            print("can't send without connection")
+            _LOGGER.info("no connection with %s", self.dev_id)
             return None
         req_id = _next_req_id()
         data = {
@@ -291,17 +289,25 @@ class Terncy:
         if wait_result:
             return await self._wait_for_response(req_id, data, timeout)
 
-    async def set_onoff(self, ent_uuid, state, wait_result=False, timeout=5):
-        if self._connection is None:
-            print("can't send without connection")
-            return None
-        return await self.set_attribute(ent_uuid, "on", state, 0, wait_result)
-
-    async def set_attribute(
-        self, ent_uuid, attr, attr_val, method, wait_result=False, timeout=5
+    async def set_onoff(
+        self, ent_id, state, wait_result=False, timeout=WAIT_RESP_TIMEOUT_SEC
     ):
         if self._connection is None:
-            print("can't send without connection")
+            _LOGGER.info("no connection with %s", self.dev_id)
+            return None
+        return await self.set_attribute(ent_id, "on", state, 0, wait_result)
+
+    async def set_attribute(
+        self,
+        ent_id,
+        attr,
+        attr_val,
+        method,
+        wait_result=False,
+        timeout=WAIT_RESP_TIMEOUT_SEC,
+    ):
+        if self._connection is None:
+            _LOGGER.info("no connection with %s", self.dev_id)
             return None
         req_id = _next_req_id()
         data = {
@@ -309,7 +315,7 @@ class Terncy:
             "intent": "execute",
             "entities": [
                 {
-                    "id": ent_uuid,
+                    "id": ent_id,
                     "attributes": [
                         {
                             "attr": attr,
