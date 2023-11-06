@@ -326,11 +326,12 @@ class Terncy:
     async def set_attributes(
         self,
         ent_id,
-        attrs: list[AttrValue],
+        attrs: list[dict],
         method,
         wait_result=False,
         timeout=WAIT_RESP_TIMEOUT_SEC,
     ):
+        print(attrs)
         if self._connection is None:
             _LOGGER.info(f"no connection with {self.dev_id}")
             return None

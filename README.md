@@ -52,6 +52,9 @@ async def main():
     await t.start()
     t.set_onoff("devid_of_device", 1)
 
+    attributes = [{"attr":"on", "value":1}, {"attr":"brightness", "value":42}]
+    t.set_attributes("devid_of_device", attributes) 
+
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
