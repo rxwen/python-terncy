@@ -6,6 +6,7 @@ import json
 import ssl
 import uuid
 from terncy.version import __version__
+from terncy.types import AttrValue
 import terncy.event as event
 import ipaddress
 from datetime import datetime
@@ -314,6 +315,39 @@ class Terncy:
                             "value": attr_val,
                             "method": method,
                         }
+                    ],
+                }
+            ],
+        }
+        await self._connection.send(json.dumps(data))
+        if wait_result:
+            return await self._wait_for_response(req_id, data, timeout)
+
+    async def set_attributes(
+        self,
+        ent_id,
+        attrs: list[AttrValue],
+        method,
+        wait_result=False,
+        timeout=WAIT_RESP_TIMEOUT_SEC,
+    ):
+        if self._connection is None:
+            _LOGGER.info(f"no connection with {self.dev_id}")
+            return None
+        req_id = _next_req_id()
+        data = {
+            "reqId": req_id,
+            "intent": "execute",
+            "entities": [
+                {
+                    "id": eid,
+                    "attributes": [
+                        {
+                            "attr": av["attr"],
+                            "value": av["value"],
+                            "method": method,
+                        }
+                        for av in attrs
                     ],
                 }
             ],
