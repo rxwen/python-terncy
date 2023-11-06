@@ -340,7 +340,7 @@ class Terncy:
             "intent": "execute",
             "entities": [
                 {
-                    "id": eid,
+                    "id": ent_id,
                     "attributes": [
                         {
                             "attr": av["attr"],
