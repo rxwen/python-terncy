@@ -6,7 +6,6 @@ import json
 import ssl
 import uuid
 from terncy.version import __version__
-from terncy.types import AttrValue
 import terncy.event as event
 import ipaddress
 from datetime import datetime
