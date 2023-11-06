@@ -1,7 +1,4 @@
-from typing import TypedDict
-
-
-class AttrValue(TypedDict):
+class AttrValue:
     attr: str
     value: int
     strValue: str

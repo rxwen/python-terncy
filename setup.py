@@ -5,8 +5,6 @@ import sys
 
 from setuptools import setup
 
-assert sys.version >= "3.6", "Requires Python v3.6 or above."
-
 
 def read(filename):
     with open(filename, "r") as file_handle:
