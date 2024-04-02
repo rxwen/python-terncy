@@ -318,7 +318,20 @@ class Terncy:
                 }
             ],
         }
-        await self._connection.send(json.dumps(data))
+        try:
+            await self._connection.send(json.dumps(data))
+        except (
+            aiohttp.client_exceptions.ClientConnectionError,
+            websockets.exceptions.ConnectionClosedError,
+            ConnectionRefusedError,
+            OSError,
+            websockets.exceptions.InvalidStatusCode,
+        ) as e:
+            _LOGGER.info(f"send failed {self.dev_id} {e}")
+            if self._event_handler:
+                self._event_handler(self, event.Disconnected())
+            self._connection = None
+            return None  # or raise again?
         if wait_result:
             return await self._wait_for_response(req_id, data, timeout)
 
@@ -352,6 +365,19 @@ class Terncy:
                 }
             ],
         }
-        await self._connection.send(json.dumps(data))
+        try:
+            await self._connection.send(json.dumps(data))
+        except (
+            aiohttp.client_exceptions.ClientConnectionError,
+            websockets.exceptions.ConnectionClosedError,
+            ConnectionRefusedError,
+            OSError,
+            websockets.exceptions.InvalidStatusCode,
+        ) as e:
+            _LOGGER.info(f"send failed {self.dev_id} {e}")
+            if self._event_handler:
+                self._event_handler(self, event.Disconnected())
+            self._connection = None
+            return None  # or raise again?
         if wait_result:
             return await self._wait_for_response(req_id, data, timeout)
