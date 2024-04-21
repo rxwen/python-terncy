@@ -301,26 +301,38 @@ class Terncy:
         if self._connection is None:
             _LOGGER.info(f"no connection with {self.dev_id}")
             return None
-        req_id = _next_req_id()
-        data = {
-            "reqId": req_id,
-            "intent": "execute",
-            "entities": [
-                {
-                    "id": ent_id,
-                    "attributes": [
-                        {
-                            "attr": attr,
-                            "value": attr_val,
-                            "method": method,
-                        }
-                    ],
-                }
-            ],
-        }
-        await self._connection.send(json.dumps(data))
-        if wait_result:
-            return await self._wait_for_response(req_id, data, timeout)
+        try:
+            req_id = _next_req_id()
+            data = {
+                "reqId": req_id,
+                "intent": "execute",
+                "entities": [
+                    {
+                        "id": ent_id,
+                        "attributes": [
+                            {
+                                "attr": attr,
+                                "value": attr_val,
+                                "method": method,
+                            }
+                        ],
+                    }
+                ],
+            }
+            await self._connection.send(json.dumps(data))
+            if wait_result:
+                return await self._wait_for_response(req_id, data, timeout)
+        except (
+            aiohttp.client_exceptions.ClientConnectionError,
+            websockets.exceptions.ConnectionClosedError,
+            ConnectionRefusedError,
+            OSError,
+            websockets.exceptions.InvalidStatusCode,
+        ) as e:
+            _LOGGER.info(f"disconnect when set attr {e}")
+            if self._event_handler:
+                self._event_handler(self, event.Disconnected())
+            self._connection = None
 
     async def set_attributes(
         self,
@@ -330,28 +342,40 @@ class Terncy:
         wait_result=False,
         timeout=WAIT_RESP_TIMEOUT_SEC,
     ):
-        print(attrs)
         if self._connection is None:
             _LOGGER.info(f"no connection with {self.dev_id}")
             return None
-        req_id = _next_req_id()
-        data = {
-            "reqId": req_id,
-            "intent": "execute",
-            "entities": [
-                {
-                    "id": ent_id,
-                    "attributes": [
-                        {
-                            "attr": av["attr"],
-                            "value": av["value"],
-                            "method": method,
-                        }
-                        for av in attrs
-                    ],
-                }
-            ],
-        }
-        await self._connection.send(json.dumps(data))
-        if wait_result:
-            return await self._wait_for_response(req_id, data, timeout)
+        try:
+            req_id = _next_req_id()
+            data = {
+                "reqId": req_id,
+                "intent": "execute",
+                "entities": [
+                    {
+                        "id": ent_id,
+                        "attributes": [
+                            {
+                                "attr": av["attr"],
+                                "value": av["value"],
+                                "method": method,
+                            }
+                            for av in attrs
+                        ],
+                    }
+                ],
+            }
+            await self._connection.send(json.dumps(data))
+            if wait_result:
+                return await self._wait_for_response(req_id, data, timeout)
+        except (
+            aiohttp.client_exceptions.ClientConnectionError,
+            websockets.exceptions.ConnectionClosedError,
+            ConnectionRefusedError,
+            OSError,
+            websockets.exceptions.InvalidStatusCode,
+        ) as e:
+            _LOGGER.info(f"disconnect when set attrs {e}")
+            if self._event_handler:
+                self._event_handler(self, event.Disconnected())
+            self._connection = None
+            return
