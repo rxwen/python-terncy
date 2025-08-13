@@ -217,7 +217,14 @@ class Terncy:
                     _LOGGER.info(f"connected to {self.dev_id}")
                     self._event_handler(self, event.Connected())
                 async for msg in ws:
-                    msgObj = json.loads(msg)
+                    try:
+                        msgObj = json.loads(msg)
+                    except Exception as e:
+                        _LOGGER.warning(f"Failed to parse message: {msg}, error: {e}")
+                        continue
+                    if not isinstance(msgObj, dict):
+                        _LOGGER.warning(f"Received non-dict message: {msgObj}")
+                        continue
                     _LOGGER.debug(f"recv {self.dev_id} msg: {msgObj}")
                     if "rspId" in msgObj:
                         rsp_id = msgObj["rspId"]
